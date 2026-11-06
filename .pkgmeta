@@ -1,0 +1,5 @@
+package-as: PresenceLite
+
+ignore:
+  - README.md
+  - .github

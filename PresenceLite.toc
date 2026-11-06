@@ -1,0 +1,11 @@
+## Interface: 120100, 120005, 120001, 16001
+## Title: Presence Lite
+## Notes: Cinematic pop-ups for zone changes, discoveries, quest progress/completion and level ups. A trimmed-down take on Horizon Suite's Presence module.
+## Author: Derick (based on Horizon Suite by Crystilac, MIT)
+## Version: @project-version@
+## SavedVariables: PresenceLiteDB
+## OptionalDeps: LibSharedMedia-3.0, SharedMedia
+
+Core.lua
+Events.lua
+Options.lua
