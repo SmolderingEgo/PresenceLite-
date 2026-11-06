@@ -2,4 +2,5 @@ package-as: PresenceLite
 
 ignore:
   - README.md
+  - VERSION
   - .github

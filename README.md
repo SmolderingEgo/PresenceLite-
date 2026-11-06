@@ -32,7 +32,7 @@ Esc > Options > AddOns > Presence Lite, or type `/pl`.
 `/pl` settings, `/pl test` preview, `/pl unlock` / `/pl lock`, `/pl forever` / `/pl midnight`, `/pl on|off|toggle`, `/pl reset`
 
 ## Install with WowUp
-In WowUp: **Get Addons > Install from URL**, paste `https://github.com/SmolderingEgo/PresenceLite`, and install. WowUp picks up new versions from this repo's Releases.
+In WowUp: **Get Addons > Install from URL**, paste `https://github.com/SmolderingEgo/PresenceLite-`, and install. WowUp picks up new versions from this repo's Releases.
 
 ## Releasing a new version
-Commit your changes, then tag and push: `git tag v1.2.0 && git push --tags`. The GitHub Action builds the zip (and the `release.json` WowUp reads) and publishes the release.
+Change the number in `VERSION` (e.g. `1.2.0`), commit and push to `main`. The GitHub Action tags it, builds the zip plus the `release.json` WowUp reads, and publishes the release. You can also re-run it from the Actions tab.
