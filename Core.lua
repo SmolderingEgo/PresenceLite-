@@ -253,13 +253,45 @@ end
 if not ornate.hasFill then ornate.fill:Hide() end
 ornate:Hide()
 
--- Banner backdrop: dark band that fades out to the sides.
-local backdropL = PL:CreateTexture(nil, "BACKGROUND", nil, 1)
-local backdropR = PL:CreateTexture(nil, "BACKGROUND", nil, 1)
-for _, t in ipairs({ backdropL, backdropR }) do t:SetTexture("Interface\\Buttons\\WHITE8X8") end
-backdropL.leftSide = true   -- fade toward the outer edges, darkest in the middle
-backdropL:SetPoint("TOPRIGHT", PL, "TOP", 0, 14)
-backdropR:SetPoint("TOPLEFT", PL, "TOP", 0, 14)
+-- Banner backdrop: dark band, darkest in the middle and fading out on all four sides.
+-- Built from a grid of solid cells with stepped alpha, so it doesn't depend on gradients.
+local BD_COLS, BD_ROWS, BD_MAX_ALPHA = 32, 10, 0.6
+local backdrop = CreateFrame("Frame", nil, PL)
+PL:SetFrameLevel(20)
+backdrop:SetFrameLevel(10)   -- below the pop-up's own text
+backdrop.cells = {}
+local function Smooth(t)
+    if t <= 0 then return 0 elseif t >= 1 then return 1 end
+    return t * t * (3 - 2 * t)
+end
+for row = 1, BD_ROWS do
+    -- fade only the top and bottom 30% of the band
+    local v = (row - 0.5) / BD_ROWS
+    local fy = Smooth(math.min(v, 1 - v) / 0.3)
+    for col = 1, BD_COLS do
+        -- fade across the outer 45% on each side
+        local u = (col - 0.5) / BD_COLS
+        local fx = Smooth(math.min(u, 1 - u) / 0.45)
+        local cell = backdrop:CreateTexture(nil, "BACKGROUND")
+        cell:SetColorTexture(0, 0, 0, BD_MAX_ALPHA * fx * fy)
+        cell.col, cell.row = col, row
+        backdrop.cells[#backdrop.cells + 1] = cell
+    end
+end
+backdrop:Hide()
+
+local function LayoutBackdrop(w, h)
+    backdrop:ClearAllPoints()
+    backdrop:SetPoint("TOP", PL, "TOP", 0, 34)
+    backdrop:SetSize(w, h)
+    local cw, ch = w / BD_COLS, h / BD_ROWS
+    for _, cell in ipairs(backdrop.cells) do
+        cell:ClearAllPoints()
+        cell:SetPoint("TOPLEFT", backdrop, "TOPLEFT", (cell.col - 1) * cw, -(cell.row - 1) * ch)
+        -- a hair of overlap so no seams show between cells
+        cell:SetSize(cw + 0.5, ch + 0.5)
+    end
+end
 
 for _, fs in ipairs({ title, sub, disc }) do
     fs:SetJustifyH("CENTER")
@@ -309,14 +341,11 @@ end
 
 local function SetBackdropState(alpha)
     if not PL.db.backdrop then
-        backdropL:Hide()
-        backdropR:Hide()
+        backdrop:Hide()
         return
     end
-    backdropL:Show()
-    backdropR:Show()
-    SetGradientColor(backdropL, 0, 0, 0, 0.55 * alpha)
-    SetGradientColor(backdropR, 0, 0, 0, 0.55 * alpha)
+    backdrop:Show()
+    backdrop:SetAlpha(alpha)
 end
 
 local function SetTitleState(alpha, offset)
@@ -396,10 +425,10 @@ local function Layout(cfg)
         end
     end
 
-    local bandH = (-anim.subBaseY) + sSize * 1.3 + db.discoverySize + 34
-    local bandW = math.max(db.dividerWidth, 420) * 0.85
-    backdropL:SetSize(bandW, bandH)
-    backdropR:SetSize(bandW, bandH)
+    -- Tall enough that the faded top and bottom edges sit outside the text.
+    local bandH = (-anim.subBaseY) + sSize * 1.3 + db.discoverySize + 70
+    local bandW = math.max(db.dividerWidth, 420) * 1.9
+    LayoutBackdrop(bandW, bandH)
 end
 
 local function ApplyColors(item)
