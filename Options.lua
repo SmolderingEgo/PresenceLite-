@@ -160,6 +160,17 @@ function ns.BuildOptions()
     Check("showLevelUp", "Level up")
     Check("hideBlizzLevelUp", "Hide Blizzard's level-up banner", "Fades out the default toast for a few seconds after you level.")
 
+    -- Sound -------------------------------------------------------------------
+    Header("Sound")
+    Check("sound", "Play sounds", "Soft chimes for zone changes, discoveries, quests and level ups.")
+    Check("soundProgress", "Tick on objective progress", "A tiny tick each time an objective counts up. Off by default because it fires a lot.")
+    Dropdown("soundChannel", "Sound channel", function()
+        local c = Settings.CreateControlTextContainer()
+        c:Add("SFX", "Sound effects")
+        c:Add("Master", "Master")
+        return c:GetData()
+    end, "Sound effects follows the game's effects volume. Master plays even when effects are muted.")
+
     -- When to stay quiet ----------------------------------------------------
     Header("Stay quiet")
     Check("hideInCombat", "Hide during combat", "Level ups still show.")

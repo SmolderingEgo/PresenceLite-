@@ -55,6 +55,11 @@ ns.DEFAULTS = {
     showDivider          = true,
     dividerWidth         = 400,
 
+    -- Sound
+    sound                = true,       -- soft chimes for zone, quest and level-up pop-ups
+    soundProgress        = false,      -- tiny tick on objective progress (off: it fires a lot)
+    soundChannel         = "SFX",      -- "SFX" follows the effects slider; "Master" plays even with effects muted
+
     -- Position and timing
     scale                = 1.0,
     posX                 = 0,
@@ -178,6 +183,18 @@ local TYPES = {
     QUEST_UPDATE       = { pri = 1, size = "S", dur = 2.5, color = "progress",   subColor = "questSub" },
 }
 ns.TYPES = TYPES
+
+-- Which sound each pop-up plays (files in media\\sounds). Subzones stay silent unless "Discovered".
+local SOUNDS = {
+    LEVEL_UP           = "levelup",
+    QUEST_COMPLETE     = "quest",
+    WORLD_QUEST        = "quest",
+    QUEST_READY        = "quest",
+    QUEST_ACCEPT       = "quest",
+    WORLD_QUEST_ACCEPT = "quest",
+    ZONE_CHANGE        = "zone",
+    QUEST_UPDATE       = "progress",
+}
 
 local TITLE_MULT = { L = 1.0, M = 0.75, S = 0.58 }
 local SUB_MULT   = { L = 1.0, M = 0.92, S = 0.83 }
@@ -438,6 +455,13 @@ local function ApplyColors(item)
     divider:SetVertexColor(GetColor("divider"))
 end
 
+local function PlayPopSound(name)
+    local db = PL.db
+    if not db.sound or not name then return end
+    if name == "progress" and not db.soundProgress then return end
+    PlaySoundFile(MEDIA .. "sounds\\" .. name .. ".ogg", db.soundChannel or "SFX")
+end
+
 local function ResetVisuals()
     if not PL.db then return end
     SetTitleState(0, 0)
@@ -471,6 +495,11 @@ local function Play(item)
     end
     if anim.hasDisc then PL.pendingDiscovery = nil end
     disc:SetText(anim.hasDisc and DISCOVERED_TEXT or "")
+
+    local snd = SOUNDS[item.type]
+    if not snd and anim.hasDisc then snd = "zone" end
+    item.soundPlayed = snd ~= nil
+    PlayPopSound(snd)
 
     anim.phase = "entrance"
     anim.e = 0
@@ -630,6 +659,10 @@ function PL:OnDiscovery()
     if active and TYPES[active.type].zoneish and (anim.phase == "entrance" or anim.phase == "hold") then
         if not anim.hasDisc then
             anim.hasDisc = true
+            if not active.soundPlayed then
+                active.soundPlayed = true
+                PlayPopSound("zone")
+            end
             disc:SetText(DISCOVERED_TEXT)
             disc:SetTextColor(GetColor("discovery"))
             if anim.phase == "hold" then
