@@ -56,8 +56,12 @@ ns.DEFAULTS = {
     dividerWidth         = 400,
 
     -- Sound
-    sound                = true,       -- soft chimes for zone, quest and level-up pop-ups
-    soundProgress        = false,      -- tiny tick on objective progress (off: it fires a lot)
+    sound                = true,       -- master switch for pop-up sounds
+    -- Sound per pop-up kind: "none", "file:<name>" (media\\sounds) or "kit:<SOUNDKIT name>" (built into WoW)
+    soundZone            = "file:shimmer",
+    soundQuest           = "kit:IG_QUEST_LIST_COMPLETE",
+    soundLevel           = "none",     -- the game already plays its own level-up fanfare
+    soundTick            = "none",     -- objective progress (fires a lot)
     soundChannel         = "SFX",      -- "SFX" follows the effects slider; "Master" plays even with effects muted
 
     -- Position and timing
@@ -184,16 +188,42 @@ local TYPES = {
 }
 ns.TYPES = TYPES
 
--- Which sound each pop-up plays (files in media\\sounds). Subzones stay silent unless "Discovered".
+-- Which sound setting each pop-up uses. Subzones stay silent unless "Discovered".
 local SOUNDS = {
-    LEVEL_UP           = "levelup",
-    QUEST_COMPLETE     = "quest",
-    WORLD_QUEST        = "quest",
-    QUEST_READY        = "quest",
-    QUEST_ACCEPT       = "quest",
-    WORLD_QUEST_ACCEPT = "quest",
-    ZONE_CHANGE        = "zone",
-    QUEST_UPDATE       = "progress",
+    LEVEL_UP           = "soundLevel",
+    QUEST_COMPLETE     = "soundQuest",
+    WORLD_QUEST        = "soundQuest",
+    QUEST_READY        = "soundQuest",
+    QUEST_ACCEPT       = "soundQuest",
+    WORLD_QUEST_ACCEPT = "soundQuest",
+    ZONE_CHANGE        = "soundZone",
+    QUEST_UPDATE       = "soundTick",
+}
+
+-- Sounds offered in the pickers. Built-in ones only appear if this client has them.
+ns.CUSTOM_SOUNDS = {
+    { "file:shimmer",     "Presence Lite: soft shimmer" },
+    { "file:whoosh",      "Presence Lite: airy whoosh" },
+    { "file:chime_zone",  "Presence Lite: chime (zone)" },
+    { "file:chime_quest", "Presence Lite: chime (quest)" },
+    { "file:chime_level", "Presence Lite: chime (level up)" },
+    { "file:chime_tick",  "Presence Lite: tiny tick" },
+}
+ns.BLIZZARD_SOUNDS = {
+    { "IG_QUEST_LIST_COMPLETE",             "WoW: quest complete" },
+    { "IG_QUEST_LIST_OPEN",                 "WoW: quest log open" },
+    { "UI_WORLDQUEST_START",                "WoW: world quest start" },
+    { "UI_WORLDQUEST_COMPLETE",             "WoW: world quest complete" },
+    { "MAP_PING",                           "WoW: map ping" },
+    { "ACHIEVEMENT_MENU_OPEN",              "WoW: achievement window" },
+    { "UI_EPICLOOT_TOAST",                  "WoW: epic loot toast" },
+    { "UI_LEGENDARY_LOOT_TOAST",            "WoW: legendary loot toast" },
+    { "UI_GARRISON_TOAST_MISSION_COMPLETE", "WoW: mission complete toast" },
+    { "UI_DIG_SITE_COMPLETION_TOAST",       "WoW: dig site complete" },
+    { "UI_BONUS_LOOT_ROLL_END",             "WoW: bonus roll" },
+    { "UI_STORE_UNWRAP",                    "WoW: gift unwrap" },
+    { "IG_BACKPACK_OPEN",                   "WoW: bag open" },
+    { "READY_CHECK",                        "WoW: ready check" },
 }
 
 local TITLE_MULT = { L = 1.0, M = 0.75, S = 0.58 }
@@ -455,11 +485,25 @@ local function ApplyColors(item)
     divider:SetVertexColor(GetColor("divider"))
 end
 
-local function PlayPopSound(name)
+-- Plays a sound choice ("file:x", "kit:X" or "none"). Returns true if something played.
+function PL:PlaySoundChoice(choice)
+    if type(choice) ~= "string" then return false end
+    local channel = self.db.soundChannel or "SFX"
+    local kind, value = choice:match("^(%a+):(.+)$")
+    if kind == "file" then
+        PlaySoundFile(MEDIA .. "sounds\\" .. value .. ".ogg", channel)
+        return true
+    elseif kind == "kit" and SOUNDKIT and SOUNDKIT[value] then
+        PlaySound(SOUNDKIT[value], channel)
+        return true
+    end
+    return false
+end
+
+local function PlayPopSound(settingKey)
     local db = PL.db
-    if not db.sound or not name then return end
-    if name == "progress" and not db.soundProgress then return end
-    PlaySoundFile(MEDIA .. "sounds\\" .. name .. ".ogg", db.soundChannel or "SFX")
+    if not db.sound or not settingKey then return end
+    PL:PlaySoundChoice(db[settingKey])
 end
 
 local function ResetVisuals()
@@ -497,7 +541,7 @@ local function Play(item)
     disc:SetText(anim.hasDisc and DISCOVERED_TEXT or "")
 
     local snd = SOUNDS[item.type]
-    if not snd and anim.hasDisc then snd = "zone" end
+    if not snd and anim.hasDisc then snd = "soundZone" end
     item.soundPlayed = snd ~= nil
     PlayPopSound(snd)
 
@@ -661,7 +705,7 @@ function PL:OnDiscovery()
             anim.hasDisc = true
             if not active.soundPlayed then
                 active.soundPlayed = true
-                PlayPopSound("zone")
+                PlayPopSound("soundZone")
             end
             disc:SetText(DISCOVERED_TEXT)
             disc:SetTextColor(GetColor("discovery"))

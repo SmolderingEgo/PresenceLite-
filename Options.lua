@@ -162,8 +162,25 @@ function ns.BuildOptions()
 
     -- Sound -------------------------------------------------------------------
     Header("Sound")
-    Check("sound", "Play sounds", "Soft chimes for zone changes, discoveries, quests and level ups.")
-    Check("soundProgress", "Tick on objective progress", "A tiny tick each time an objective counts up. Off by default because it fires a lot.")
+    Check("sound", "Play sounds", "Master switch for pop-up sounds.")
+    local function SoundOptions()
+        local c = Settings.CreateControlTextContainer()
+        c:Add("none", "None")
+        for _, e in ipairs(ns.CUSTOM_SOUNDS) do c:Add(e[1], e[2]) end
+        for _, e in ipairs(ns.BLIZZARD_SOUNDS) do
+            if SOUNDKIT and SOUNDKIT[e[1]] then c:Add("kit:" .. e[1], e[2]) end
+        end
+        return c:GetData()
+    end
+    -- Picking a sound plays it, so you can audition them right here.
+    local function preview(_, value)
+        PL:PlaySoundChoice(value)
+    end
+    local tip = "Picking one plays it so you can hear it."
+    Dropdown("soundZone", "Zone / discovery sound", SoundOptions, tip, preview)
+    Dropdown("soundQuest", "Quest sound", SoundOptions, "Quest accepted, objectives complete and turned in. " .. tip, preview)
+    Dropdown("soundLevel", "Level-up sound", SoundOptions, "The game plays its own level-up fanfare too. " .. tip, preview)
+    Dropdown("soundTick", "Objective progress sound", SoundOptions, "Plays on every objective count-up, so keep it subtle. " .. tip, preview)
     Dropdown("soundChannel", "Sound channel", function()
         local c = Settings.CreateControlTextContainer()
         c:Add("SFX", "Sound effects")
