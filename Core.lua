@@ -257,6 +257,7 @@ ornate:Hide()
 local backdropL = PL:CreateTexture(nil, "BACKGROUND", nil, 1)
 local backdropR = PL:CreateTexture(nil, "BACKGROUND", nil, 1)
 for _, t in ipairs({ backdropL, backdropR }) do t:SetTexture("Interface\\Buttons\\WHITE8X8") end
+backdropL.leftSide = true   -- fade toward the outer edges, darkest in the middle
 backdropL:SetPoint("TOPRIGHT", PL, "TOP", 0, 14)
 backdropR:SetPoint("TOPLEFT", PL, "TOP", 0, 14)
 
@@ -353,6 +354,9 @@ local function SetDividerState(progress)
         end
         if ornate.hasFill then
             ornate.fill:Show()
+            -- Blizzard's art is red; desaturate and tint it to the divider colour.
+            ornate.fill:SetDesaturated(true)
+            ornate.fill:SetVertexColor(c[1] * 1.15, c[2] * 1.15, c[3] * 1.15)
             ornate.fill:SetAlpha(progress)
         end
     else
