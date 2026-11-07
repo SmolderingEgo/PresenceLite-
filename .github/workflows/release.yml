@@ -41,6 +41,7 @@ jobs:
           v="${{ steps.ver.outputs.tag }}"
           mkdir -p dist/PresenceLite
           cp Core.lua Events.lua Options.lua LICENSE.txt dist/PresenceLite/
+          cp -r media dist/PresenceLite/
           sed "s/@project-version@/$v/" PresenceLite.toc > dist/PresenceLite/PresenceLite.toc
           (cd dist && zip -rq "PresenceLite-$v.zip" PresenceLite)
           iface=$(grep '^## Interface:' PresenceLite.toc | sed 's/^## Interface: *//; s/,.*//')

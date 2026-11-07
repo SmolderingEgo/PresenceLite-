@@ -187,9 +187,17 @@ function ns.BuildOptions()
         c:Add("ornate", "Ornate gold (Forever)")
         return c:GetData()
     end)
+    Dropdown("ornament", "Ornate centrepiece", function()
+        local c = Settings.CreateControlTextContainer()
+        c:Add("diamond", "Gold diamond")
+        c:Add("blizzard", "Blizzard filigree")
+        c:Add("none", "None")
+        return c:GetData()
+    end, "The piece in the middle of the ornate divider.")
     Slider("dividerWidth", "Divider width", 100, 800, 10)
 
     Check("backdrop", "Dark banner behind text", "A soft dark band that fades out at the sides. Helps readability in bright zones.")
+    Slider("backdropAlpha", "Banner darkness", 0.1, 1, 0.05, "%.2f")
 
     -- Position & timing -----------------------------------------------------
     Header("Position and timing")

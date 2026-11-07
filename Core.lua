@@ -44,6 +44,8 @@ ns.DEFAULTS = {
     subFont              = "Fonts\\FRIZQT__.TTF",
     dividerStyle         = "line",     -- "line" or "ornate"
     backdrop             = false,      -- dark banner behind the text
+    backdropAlpha        = 0.4,        -- how dark that banner gets
+    ornament             = "diamond",  -- ornate divider centre: "diamond", "blizzard" or "none"
     slide                = true,       -- slide text in/out (off = classic straight fade)
     outline              = "OUTLINE",
     shadow               = true,
@@ -96,7 +98,8 @@ ns.PRESETS = {
             font = "Fonts\\MORPHEUS.TTF", subFont = "Fonts\\FRIZQT__.TTF", outline = "OUTLINE", shadow = true,
             titleSize = 54, subSize = 22, discoverySize = 15,
             showDivider = true, dividerStyle = "ornate", dividerWidth = 440,
-            backdrop = true, slide = false, fadeIn = 1.0, fadeOut = 1.2,
+            backdrop = true, backdropAlpha = 0.4, ornament = "diamond",
+            slide = false, fadeIn = 1.0, fadeOut = 1.2,
         },
         colors = {
             zone = { 1.00, 0.82, 0.00 }, subzone = { 0.96, 0.89, 0.72 }, discovery = { 0.35, 0.88, 0.82 },
@@ -239,58 +242,52 @@ ornate.r1:SetPoint("LEFT", ornate, "CENTER", 0, 2)
 ornate.l2:SetPoint("RIGHT", ornate, "CENTER", 0, -3)
 ornate.r2:SetPoint("LEFT", ornate, "CENTER", 0, -3)
 ornate.fill = ornate:CreateTexture(nil, "OVERLAY")
-ornate.fill:SetPoint("CENTER", ornate, "CENTER", 0, -1)
-ornate.hasFill = false
+ornate.fill:SetPoint("CENTER", ornate, "CENTER", 0, 0)
+
+local MEDIA = "Interface\\AddOns\\PresenceLite\\media\\"
+-- Blizzard's boss-banner filigree, used at its native size (it blurs when stretched).
+local blizzFill
 for _, atlas in ipairs({ "BossBanner-BottomFillagree", "BossBanner-TopFillagree" }) do
     local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
     if info then
-        ornate.fill:SetAtlas(atlas)
-        ornate.fillAspect = (info.width and info.height and info.height > 0) and (info.width / info.height) or 6
-        ornate.hasFill = true
+        blizzFill = { atlas = atlas, w = info.width or 128, h = info.height or 32 }
         break
     end
 end
-if not ornate.hasFill then ornate.fill:Hide() end
+
+-- Returns width, height of the ornament for the current setting, or nil when hidden.
+local function SetupOrnament()
+    local mode = PL.db.ornament
+    if mode == "blizzard" and blizzFill then
+        ornate.fill:SetAtlas(blizzFill.atlas)
+        ornate.fill:SetDesaturated(true)
+        ornate.fill:SetSize(blizzFill.w, blizzFill.h)
+        ornate.fill:Show()
+        return blizzFill.w, blizzFill.h
+    elseif mode == "none" then
+        ornate.fill:Hide()
+        return nil
+    end
+    -- Our own diamond-and-scroll ornament: white art drawn at 256x64, shown at half size so it stays sharp.
+    ornate.fill:SetTexture(MEDIA .. "ornament")
+    ornate.fill:SetTexCoord(0, 1, 0, 1)
+    ornate.fill:SetDesaturated(false)
+    ornate.fill:SetSize(176, 44)
+    ornate.fill:Show()
+    return 176, 44
+end
 ornate:Hide()
 
--- Banner backdrop: dark band, darkest in the middle and fading out on all four sides.
--- Built from a grid of solid cells with stepped alpha, so it doesn't depend on gradients.
-local BD_COLS, BD_ROWS, BD_MAX_ALPHA = 32, 10, 0.6
-local backdrop = CreateFrame("Frame", nil, PL)
-PL:SetFrameLevel(20)
-backdrop:SetFrameLevel(10)   -- below the pop-up's own text
-backdrop.cells = {}
-local function Smooth(t)
-    if t <= 0 then return 0 elseif t >= 1 then return 1 end
-    return t * t * (3 - 2 * t)
-end
-for row = 1, BD_ROWS do
-    -- fade only the top and bottom 30% of the band
-    local v = (row - 0.5) / BD_ROWS
-    local fy = Smooth(math.min(v, 1 - v) / 0.3)
-    for col = 1, BD_COLS do
-        -- fade across the outer 45% on each side
-        local u = (col - 0.5) / BD_COLS
-        local fx = Smooth(math.min(u, 1 - u) / 0.45)
-        local cell = backdrop:CreateTexture(nil, "BACKGROUND")
-        cell:SetColorTexture(0, 0, 0, BD_MAX_ALPHA * fx * fy)
-        cell.col, cell.row = col, row
-        backdrop.cells[#backdrop.cells + 1] = cell
-    end
-end
+-- Banner backdrop: one soft elliptical texture (dark centre, fades out on every side).
+local backdrop = PL:CreateTexture(nil, "BACKGROUND")
+backdrop:SetTexture(MEDIA .. "backdrop")
+backdrop:SetVertexColor(1, 1, 1)
 backdrop:Hide()
 
-local function LayoutBackdrop(w, h)
+local function LayoutBackdrop(w, h, centerY)
     backdrop:ClearAllPoints()
-    backdrop:SetPoint("TOP", PL, "TOP", 0, 34)
+    backdrop:SetPoint("CENTER", PL, "TOP", 0, centerY)
     backdrop:SetSize(w, h)
-    local cw, ch = w / BD_COLS, h / BD_ROWS
-    for _, cell in ipairs(backdrop.cells) do
-        cell:ClearAllPoints()
-        cell:SetPoint("TOPLEFT", backdrop, "TOPLEFT", (cell.col - 1) * cw, -(cell.row - 1) * ch)
-        -- a hair of overlap so no seams show between cells
-        cell:SetSize(cw + 0.5, ch + 0.5)
-    end
 end
 
 for _, fs in ipairs({ title, sub, disc }) do
@@ -345,7 +342,7 @@ local function SetBackdropState(alpha)
         return
     end
     backdrop:Show()
-    backdrop:SetAlpha(alpha)
+    backdrop:SetAlpha(alpha * PL.db.backdropAlpha)
 end
 
 local function SetTitleState(alpha, offset)
@@ -381,11 +378,9 @@ local function SetDividerState(progress)
             t:SetWidth(half * 0.8)
             SetGradientColor(t, c[1], c[2], c[3], 0.55 * progress)
         end
-        if ornate.hasFill then
-            ornate.fill:Show()
-            -- Blizzard's art is red; desaturate and tint it to the divider colour.
-            ornate.fill:SetDesaturated(true)
-            ornate.fill:SetVertexColor(c[1] * 1.15, c[2] * 1.15, c[3] * 1.15)
+        if ornate.fill:IsShown() then
+            -- Tinted to the divider colour (Blizzard's red art is desaturated first).
+            ornate.fill:SetVertexColor(math.min(c[1] * 1.1, 1), math.min(c[2] * 1.1, 1), math.min(c[3] * 1.1, 1))
             ornate.fill:SetAlpha(progress)
         end
     else
@@ -417,18 +412,17 @@ local function Layout(cfg)
     if db.dividerStyle == "ornate" then
         ornate:ClearAllPoints()
         ornate:SetPoint("CENTER", PL, "TOP", 0, dividerY - 1)
-        if ornate.hasFill then
-            local fw = math.min(db.dividerWidth * 0.45, 220)
-            ornate.fill:SetSize(fw, fw / (ornate.fillAspect or 6))
-            local fh = fw / (ornate.fillAspect or 6)
+        local _, fh = SetupOrnament()
+        if fh then
             anim.subBaseY = dividerY - math.max(12, math.floor(fh * 0.5 + 6))
         end
     end
 
     -- Tall enough that the faded top and bottom edges sit outside the text.
-    local bandH = (-anim.subBaseY) + sSize * 1.3 + db.discoverySize + 70
-    local bandW = math.max(db.dividerWidth, 420) * 1.9
-    LayoutBackdrop(bandW, bandH)
+    local contentH = (-anim.subBaseY) + sSize * 1.3 + db.discoverySize
+    local bandH = (contentH + 30) * 1.6
+    local bandW = math.max(db.dividerWidth, 420) * 1.7
+    LayoutBackdrop(bandW, bandH, -contentH / 2 + 4)
 end
 
 local function ApplyColors(item)
